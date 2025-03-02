@@ -1,53 +1,53 @@
 from fastapi import FastAPI
-import sqlite3
-import time
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
 
 app = FastAPI()
 
-# Lokale SQLite-Datenbank einrichten
-DB_FILE = "test.db"
+# **1️⃣ Datenbankverbindung mit Azure SQL herstellen**
+DATABASE_URL = os.getenv("DATABASE_URL")  # Holt den Wert aus den Umgebungsvariablen
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+# SQLAlchemy Setup für Azure SQL
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-# Initialisierung der Test-Datenbank
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS test_table (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            value TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+# **2️⃣ Datenbanktabelle definieren**
+class TestTable(Base):
+    __tablename__ = "test_table"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100))
+    value = Column(String(100))
 
-init_db()  # Datenbank beim Start initialisieren
+# **3️⃣ Datenbank erstellen (falls noch nicht vorhanden)**
+Base.metadata.create_all(bind=engine)
 
-# API-Endpunkte
+# **4️⃣ Dependency für DB-Session**
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
+# **5️⃣ API-Endpunkte für CRUD-Operationen**
 @app.get("/get_data")
 def get_data():
-    """Simuliert eine Datenbankabfrage."""
-    start_time = time.time()
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM test_table LIMIT 10")
-    data = cursor.fetchall()
-    conn.close()
-    return {"response_time": time.time() - start_time, "data": [dict(row) for row in data]}
+    """Liest Daten aus Azure SQL"""
+    db = SessionLocal()
+    data = db.query(TestTable).limit(10).all()
+    db.close()
+    return {"data": [{"id": row.id, "name": row.name, "value": row.value} for row in data]}
 
 @app.post("/update_data")
 def update_data():
-    """Simuliert eine Schreiboperation in der Datenbank."""
-    start_time = time.time()
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO test_table (name, value) VALUES (?, ?)", ("TestName", "TestValue"))
-    conn.commit()
-    conn.close()
-    return {"response_time": time.time() - start_time, "status": "inserted"}
+    """Fügt eine neue Zeile in Azure SQL ein"""
+    db = SessionLocal()
+    new_entry = TestTable(name="TestName", value="TestValue")
+    db.add(new_entry)
+    db.commit()
+    db.refresh(new_entry)
+    db.close()
+    return {"status": "inserted", "id": new_entry.id}
