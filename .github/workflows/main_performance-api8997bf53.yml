@@ -1,38 +1,32 @@
 # Docs for the Azure Web Apps Deploy action: https://go.microsoft.com/fwlink/?linkid=2134798
 # More GitHub Actions for Azure: https://go.microsoft.com/fwlink/?linkid=2135048
 
-name: Azure App Service - performance-api8997bf53(Production), Build and deploy Python app
+name: Deploy FastAPI to Azure
 
 on:
   push:
     branches:
-      - main
+      - main  # Change this if you use a different branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-    # checkout the repo
-    - name: 'Checkout Github Action'
-      uses: actions/checkout@master
+      - name: Checkout code
+        uses: actions/checkout@v2
 
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
-    - name: Set up Python version
-      uses: actions/setup-python@v1
-      with:
-        python-version: '3.9'
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/fastapi-app:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/fastapi-app:latest
 
-    - name: Build using AppService-Build
-      uses: azure/appservice-build@v2
-      with:
-        platform: python
-        platform-version: '3.9'
-
-    - name: Run Azure webapp deploy action using publish profile credentials
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: performance-api8997bf53
-        slot-name: Production
-        publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9D8D3BE6505441DEBAC5C8963CD638B3 }}
-
+      - name: Restart Azure Web App
+        run: |
+          az webapp restart --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
