@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+gunicorn
+pydantic
+sqlalchemy
+pyodbc  # Falls du Azure SQL verwendest
+aiofiles  # Falls du Datei-Uploads verwendest
+python-dotenv  # Falls du Umgebungsvariablen aus einer .env-Datei laden willst
