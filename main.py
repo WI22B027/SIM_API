@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 import time
 import os
 
@@ -10,6 +11,14 @@ import os
 load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for testing (restrict in production)
+    allow_credentials=True,
+    allow_methods=["POST", "GET"],  # Specify allowed methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 # **1️⃣ Datenbankverbindung mit Azure SQL herstellen**
 DATABASE_URL = os.getenv("DATABASE_URL")  # Holt den Wert aus den Umgebungsvariablen
@@ -58,3 +67,4 @@ def update_data():
     db.refresh(new_entry)
     db.close()
     return {"response_time": time.time() - start_time, "status": "inserted", "id": new_entry.id}
+
