@@ -52,7 +52,7 @@ def get_data():
     """Liest Daten aus Azure SQL"""
     start_time = time.time()
     db = SessionLocal()
-    data = db.query(TestTable).all()
+    data = db.query(TestTable).limit(1000).all()
     db.close()
     return {"response_time": time.time() - start_time, "data": [{"id": row.id, "name": row.name, "value": row.value} for row in data]}
 
